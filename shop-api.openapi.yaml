@@ -1,0 +1,1125 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Shop API
+  version: 1.0.0
+  description: |
+    ## Назначение
+    REST API интернет-магазина для работы с каталогами, категориями, товарами и заказами.
+
+    ## Политика версионирования
+    Текущая версия API: /v1.
+
+    ## Идемпотентность
+    POST-запросы поддерживают заголовок Idempotency-Key.
+
+    ## Ошибки
+    Таблица ошибок RFC 9457:
+    - 400: Bad Request
+    - 401: Unauthorized
+    - 403: Forbidden
+    - 404: Not Found
+    - 409: Conflict
+    - 422: Unprocessable Entity
+    - 429: Too Many Requests
+    - 500: Internal Server Error
+  contact:
+    name: API Support
+    email: support@shop.example
+
+servers:
+  - url: https://staging.api.shop.example
+    description: Staging server
+  - url: https://api.shop.example
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: catalogs
+    description: Операции с каталогами
+  - name: categories
+    description: Операции с категориями
+  - name: products
+    description: Операции с товарами
+  - name: orders
+    description: Операции с заказами
+
+paths:
+  /v1/catalogs:
+    get:
+      tags: [catalogs]
+      summary: Получить список каталогов
+      operationId: listCatalogs
+      parameters:
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+        - $ref: '#/components/parameters/QueryIsActive'
+      responses:
+        '200':
+          description: Успешный ответ со списком каталогов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Catalog'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    post:
+      tags: [catalogs]
+      summary: Создать новый каталог
+      operationId: createCatalog
+      parameters:
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+      responses:
+        '201':
+          description: Каталог успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/catalogs/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PathCatalogId'
+    get:
+      tags: [catalogs]
+      summary: Получить каталог по ID
+      operationId: getCatalogById
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    put:
+      tags: [catalogs]
+      summary: Полное обновление каталога
+      operationId: replaceCatalog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Catalog'
+      responses:
+        '200':
+          description: Каталог успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    patch:
+      tags: [catalogs]
+      summary: Частичное обновление каталога
+      operationId: updateCatalog
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/CatalogPatch'
+      responses:
+        '200':
+          description: Каталог успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Catalog'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    delete:
+      tags: [catalogs]
+      summary: Удалить каталог
+      operationId: deleteCatalog
+      responses:
+        '204':
+          description: Каталог успешно удален (без тела ответа)
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/catalogs/{id}/categories:
+    parameters:
+      - $ref: '#/components/parameters/PathCatalogId'
+    get:
+      tags: [catalogs, categories]
+      summary: Получить категории конкретного каталога
+      operationId: getCatalogCategories
+      parameters:
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+      responses:
+        '200':
+          description: Список категорий каталога
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/categories:
+    get:
+      tags: [categories]
+      summary: Получить список всех категорий
+      operationId: listCategories
+      parameters:
+        - name: catalog_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: Фильтр по ID родительского каталога
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+        - $ref: '#/components/parameters/QueryIsActive'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    post:
+      tags: [categories]
+      summary: Создать категорию
+      operationId: createCategory
+      parameters:
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: Категория успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/categories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PathCategoryId'
+    get:
+      tags: [categories]
+      summary: Получить категорию по ID
+      operationId: getCategoryById
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    patch:
+      tags: [categories]
+      summary: Частичное обновление категории
+      operationId: updateCategory
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/CategoryPatch'
+      responses:
+        '200':
+          description: Категория обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    delete:
+      tags: [categories]
+      summary: Удалить категорию
+      operationId: deleteCategory
+      responses:
+        '204':
+          description: Категория удалена
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/products:
+    get:
+      tags: [products]
+      summary: Получить список товаров с фильтрацией и пагинацией
+      operationId: listProducts
+      parameters:
+        - name: category_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: Фильтр по категории
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [draft, active, archived]
+          description: Фильтр по статусу
+        - name: min_price
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Минимальная цена (в рублях)
+        - name: max_price
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Максимальная цена (в рублях)
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+      responses:
+        '200':
+          description: Список товаров
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    post:
+      tags: [products]
+      summary: Создать новый товар
+      operationId: createProduct
+      parameters:
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        '201':
+          description: Товар создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/products/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PathProductId'
+    get:
+      tags: [products]
+      summary: Получить товар по UUID
+      operationId: getProductById
+      responses:
+        '200':
+          description: Карточка товара
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    patch:
+      tags: [products]
+      summary: Частичное обновление товара
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        '200':
+          description: Товар обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    delete:
+      tags: [products]
+      summary: Удалить товар
+      operationId: deleteProduct
+      responses:
+        '204':
+          description: Товар успешно удален
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '409':
+          $ref: '#/components/responses/409Conflict'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/orders:
+    get:
+      tags: [orders]
+      summary: Получить список заказов
+      operationId: listOrders
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, confirmed, shipped, delivered, cancelled]
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+      responses:
+        '200':
+          description: Список заказов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    post:
+      tags: [orders]
+      summary: Оформить новый заказ
+      operationId: createOrder
+      parameters:
+        - $ref: '#/components/parameters/HeaderIdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreate'
+      responses:
+        '201':
+          description: Заказ успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+  /v1/orders/{id}:
+    parameters:
+      - $ref: '#/components/parameters/PathOrderId'
+    get:
+      tags: [orders]
+      summary: Получить заказ по ID
+      operationId: getOrderById
+      responses:
+        '200':
+          description: Детали заказа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+    patch:
+      tags: [orders]
+      summary: Изменить статус заказа
+      operationId: updateOrderStatus
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusUpdate'
+      responses:
+        '200':
+          description: Статус заказа обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/400BadRequest'
+        '404':
+          $ref: '#/components/responses/404NotFound'
+        '422':
+          $ref: '#/components/responses/422Unprocessable'
+        '500':
+          $ref: '#/components/responses/500InternalError'
+
+components:
+  parameters:
+    PathCatalogId:
+      name: id
+      in: path
+      required: true
+      description: Уникальный ID каталога
+      schema:
+        type: integer
+        format: int64
+    PathCategoryId:
+      name: id
+      in: path
+      required: true
+      description: Уникальный ID категории
+      schema:
+        type: integer
+        format: int64
+    PathProductId:
+      name: id
+      in: path
+      required: true
+      description: Уникальный UUID товара
+      schema:
+        type: string
+        format: uuid
+    PathOrderId:
+      name: id
+      in: path
+      required: true
+      description: Уникальный ID заказа
+      schema:
+        type: integer
+        format: int64
+    QueryLimit:
+      name: limit
+      in: query
+      required: false
+      description: Количество возвращаемых элементов
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+    QueryOffset:
+      name: offset
+      in: query
+      required: false
+      description: Смещение от начала списка
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    QueryIsActive:
+      name: is_active
+      in: query
+      required: false
+      description: Фильтр по флагу активности
+      schema:
+        type: boolean
+    HeaderIdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Ключ идемпотентности (UUID v4) для предотвращения дублирования запросов
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    400BadRequest:
+      description: Некорректный запрос
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    401Unauthorized:
+      description: Необходима аутентификация
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    403Forbidden:
+      description: Доступ запрещен
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    404NotFound:
+      description: Ресурс не найден
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    409Conflict:
+      description: Конфликт состояния ресурса
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    422Unprocessable:
+      description: Ошибка валидации входящих данных
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    429TooManyRequests:
+      description: Превышен лимит запросов
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    500InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+  schemas:
+    ProblemDetails:
+      type: object
+      description: Стандартный формат детализации ошибок RFC 9457
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: Ссылка на тип ошибки
+          example: https://api.shop.example/errors/bad-request
+        title:
+          type: string
+          description: Краткое описание ошибки
+          example: Invalid input payload
+        status:
+          type: integer
+          description: HTTP-код ответа
+          example: 400
+        detail:
+          type: string
+          description: Подробная причина ошибки
+          example: Field 'name' must be at least 3 characters long
+        instance:
+          type: string
+          description: URI ресурса, вызвавшего ошибку
+          example: /v1/catalogs
+
+    Catalog:
+      type: object
+      description: Каталог товаров верхнего уровня
+      required: [id, name, slug, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Идентификатор каталога
+          example: 1
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Название каталога
+          example: Электроника
+        slug:
+          type: string
+          minLength: 2
+          maxLength: 60
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+          description: ЧПУ-идентификатор
+          example: electronics
+        description:
+          type: string
+          minLength: 0
+          maxLength: 500
+          description: Описание каталога
+          example: Бытовая техника и гаджеты
+        is_active:
+          type: boolean
+          default: true
+          description: Флаг активности
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Дата создания (UTC)
+          example: '2026-09-01T10:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Дата обновления (UTC)
+          example: '2026-09-01T10:00:00Z'
+
+    CatalogPatch:
+      type: object
+      description: Схема частичного обновления каталога
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        slug:
+          type: string
+          minLength: 2
+          maxLength: 60
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+        description:
+          type: string
+          minLength: 0
+          maxLength: 500
+        is_active:
+          type: boolean
+
+    Category:
+      type: object
+      description: Категория внутри каталога
+      required: [id, catalog_id, name, slug, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 10
+        catalog_id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Ноутбуки
+        slug:
+          type: string
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+          example: laptops
+        image_url:
+          type: string
+          format: uri
+          example: https://cdn.shop.example/categories/laptops.png
+        sort_order:
+          type: integer
+          format: int32
+          default: 0
+          example: 10
+        is_active:
+          type: boolean
+          default: true
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-09-01T10:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-09-01T10:00:00Z'
+
+    CategoryCreate:
+      type: object
+      required: [catalog_id, name, slug]
+      properties:
+        catalog_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        slug:
+          type: string
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+        image_url:
+          type: string
+          format: uri
+        sort_order:
+          type: integer
+          format: int32
+          default: 0
+        is_active:
+          type: boolean
+          default: true
+
+    CategoryPatch:
+      type: object
+      properties:
+        catalog_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        slug:
+          type: string
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+        image_url:
+          type: string
+          format: uri
+        sort_order:
+          type: integer
+          format: int32
+        is_active:
+          type: boolean
+
+    Product:
+      type: object
+      required: [id, sku, name, category_id, price, stock, status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        sku:
+          type: string
+          minLength: 5
+          maxLength: 32
+          pattern: '^[A-Z0-9-]+$'
+          example: NB-IGR-156
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+          example: Игровой ноутбук 15.6"
+        description:
+          type: string
+          minLength: 0
+          maxLength: 5000
+          example: Мощный игровой ноутбук
+        category_id:
+          type: integer
+          format: int64
+          example: 10
+        price:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 10000000
+          example: 85000
+        stock:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 1000000
+          example: 15
+        status:
+          type: string
+          enum: [draft, active, archived]
+          default: draft
+          example: active
+        images:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            format: uri
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-09-01T10:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-09-01T10:00:00Z'
+
+    ProductCreate:
+      type: object
+      required: [sku, name, category_id, price, stock]
+      properties:
+        sku:
+          type: string
+          minLength: 5
+          maxLength: 32
+          pattern: '^[A-Z0-9-]+$'
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+        description:
+          type: string
+          minLength: 0
+          maxLength: 5000
+        category_id:
+          type: integer
+          format: int64
+        price:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 10000000
+        stock:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 1000000
+        status:
+          type: string
+          enum: [draft, active, archived]
+          default: draft
+        images:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            format: uri
+
+    ProductUpdate:
+      type: object
+      properties:
+        sku:
+          type: string
+          minLength: 5
+          maxLength: 32
+          pattern: '^[A-Z0-9-]+$'
+        name:
+          type: string
+          minLength: 2
+          maxLength: 200
+        description:
+          type: string
+          minLength: 0
+          maxLength: 5000
+        category_id:
+          type: integer
+          format: int64
+        price:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 10000000
+        stock:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 1000000
+        status:
+          type: string
+          enum: [draft, active, archived]
+        images:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            format: uri
+
+    Customer:
+      type: object
+      required: [name, email, phone]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Иван Иванов
+        email:
+          type: string
+          format: email
+          example: ivan@example.com
+        phone:
+          type: string
+          pattern: '^\+[1-9]\d{6,14}$'
+          example: '+79991234567'
+
+    OrderItem:
+      type: object
+      required: [product_id, quantity, unit_price]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 999
+          example: 2
+        unit_price:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 85000
+
+    OrderItemCreate:
+      type: object
+      required: [product_id, quantity]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 999
+          example: 2
+
+    Order:
+      type: object
+      required: [id, number, customer, items, status, total_amount, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 42
+        number:
+          type: string
+          readOnly: true
+          pattern: '^ORD-\d{4}-\d{6}$'
+          example: ORD-2026-000042
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+          default: pending
+          example: pending
+        total_amount:
+          type: integer
+          format: int64
+          readOnly: true
+          example: 170000
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-09-01T10:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: '2026-09-01T10:00:00Z'
+
+    OrderCreate:
+      type: object
+      required: [customer, items]
+      properties:
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/OrderItemCreate'
+
+    OrderStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+          example: confirmed
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Авторизация через Bearer JWT токен
